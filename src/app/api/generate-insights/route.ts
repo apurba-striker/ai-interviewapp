@@ -1,3 +1,4 @@
+import { OpenAI } from "openai";
 import { NextResponse } from "next/server";
 import { ResponseService } from "@/services/responses.service";
 import { InterviewService } from "@/services/interviews.service";
@@ -21,6 +22,12 @@ export async function POST(req: Request, res: Response) {
     });
   }
 
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+    maxRetries: 5,
+    dangerouslyAllowBrowser: true,
+  });
+
   try {
     const prompt = createUserPrompt(
       callSummaries,
@@ -29,34 +36,23 @@ export async function POST(req: Request, res: Response) {
       interview.description,
     );
 
-    const apiResponse = await fetch("https://api.perplexity.ai/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "sonar-pro",
-        messages: [
-          {
-            role: "system",
-            content: SYSTEM_PROMPT,
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        response_format: { type: "json_object" },
-      }),
+    const baseCompletion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      response_format: { type: "json_object" },
     });
 
-    if (!apiResponse.ok) {
-      throw new Error(`Perplexity API error: ${apiResponse.status}`);
-    }
-
-    const data = await apiResponse.json();
-    const content = data.choices[0]?.message?.content || "";
+    const basePromptOutput = baseCompletion.choices[0] || {};
+    const content = basePromptOutput.message?.content || "";
     const insightsResponse = JSON.parse(content);
 
     await InterviewService.updateInterview(

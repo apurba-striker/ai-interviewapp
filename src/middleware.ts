@@ -15,12 +15,12 @@ const isPublicRoute = createRouteMatcher([
 
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
-  "/interviews(.*)",
+  "/interview(.*)",
 ]);
 
 export default clerkMiddleware((auth, req) => {
-  if (isPublicRoute(req)) {
-    return;
+  if (!isPublicRoute(req)) {
+    auth().protect();
   }
 
   if (!auth().userId && isProtectedRoute(req)) {

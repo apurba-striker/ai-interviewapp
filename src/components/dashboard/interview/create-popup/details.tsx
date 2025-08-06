@@ -73,60 +73,42 @@ function DetailsPopup({
   const onGenrateQuestions = async () => {
     setLoading(true);
 
-    // Ensure all required fields are properly set
     const data = {
       name: name.trim(),
       objective: objective.trim(),
-      number: parseInt(numQuestions),
-      context: uploadedDocumentContext || "No additional context provided. Please generate questions based on the interview title and objective.",
+      number: numQuestions,
+      context: uploadedDocumentContext,
     };
 
-    // Log the data being sent for debugging
-    console.log("Sending data to API:", data);
+    const generatedQuestions = (await axios.post(
+      "/api/generate-interview-questions",
+      data,
+    )) as any;
 
-    try {
-      const generatedQuestions = await axios.post(
-        "/api/generate-interview-questions",
-        data,
-      );
+    const generatedQuestionsResponse = JSON.parse(
+      generatedQuestions?.data?.response,
+    );
 
-      const generatedQuestionsResponse = JSON.parse(
-        generatedQuestions?.data?.response,
-      );
+    const updatedQuestions = generatedQuestionsResponse.questions.map(
+      (question: Question) => ({
+        id: uuidv4(),
+        question: question.question.trim(),
+        follow_up_count: 1,
+      }),
+    );
 
-      const updatedQuestions = generatedQuestionsResponse.questions.map(
-        (question: Question) => ({
-          id: uuidv4(),
-          question: question.question.trim(),
-          follow_up_count: 1,
-        }),
-      );
-
-      const updatedInterviewData = {
-        ...interviewData,
-        name: name.trim(),
-        objective: objective.trim(),
-        questions: updatedQuestions,
-        interviewer_id: selectedInterviewer,
-        question_count: Number(numQuestions),
-        time_duration: duration,
-        description: generatedQuestionsResponse.description,
-        is_anonymous: isAnonymous,
-      };
-      setInterviewData(updatedInterviewData);
-      
-      // Don't set loading to false here - let the useEffect in createInterviewModal handle it
-      // setLoading(false); // Remove this line
-      
-    } catch (error) {
-      console.error("Error generating questions:", error);
-      // Only set loading to false on error
-      setLoading(false);
-    }
-    // Remove the finally block entirely
-    // finally {
-    //   setLoading(false);
-    // }
+    const updatedInterviewData = {
+      ...interviewData,
+      name: name.trim(),
+      objective: objective.trim(),
+      questions: updatedQuestions,
+      interviewer_id: selectedInterviewer,
+      question_count: Number(numQuestions),
+      time_duration: duration,
+      description: generatedQuestionsResponse.description,
+      is_anonymous: isAnonymous,
+    };
+    setInterviewData(updatedInterviewData);
   };
 
   const onManual = () => {

@@ -1,5 +1,5 @@
 export const SYSTEM_PROMPT =
-  "You are an expert in coming up with follow up questions to uncover deeper insights. You must respond with ONLY valid JSON format, no additional text or formatting.";
+  "You are an expert in coming up with follow up questions to uncover deeper insights.";
 
 export const generateQuestionsPrompt = (body: {
   name: string;
@@ -23,19 +23,10 @@ Follow these detailed guidelines when crafting the questions:
 Use the following context to generate the questions:
 ${body.context}
 
-Generate a 50 word or less second-person description about the interview to be shown to the user. It should be in the field 'description'.
+Moreover generate a 50 word or less second-person description about the interview to be shown to the user. It should be in the field 'description'.
 Do not use the exact objective in the description. Remember that some details are not be shown to the user. It should be a small description for the
 user to understand what the content of the interview would be. Make sure it is clear to the respondent who's taking the interview.
 
 The field 'questions' should take the format of an array of objects with the following key: question. 
 
-CRITICAL: You must respond with ONLY a valid JSON object with the keys 'questions' and 'description'. Do not include any markdown formatting, code blocks, or additional text.
-
-Example format:
-{
-  "questions": [
-    {"question": "Can you describe a challenging technical problem you solved recently?"},
-    {"question": "What was your role in your most successful project?"}
-  ],
-  "description": "This interview focuses on your technical expertise and project experience to understand your problem-solving approach and hands-on skills."
-}`;
+Strictly output only a JSON object with the keys 'questions' and 'description'.`;

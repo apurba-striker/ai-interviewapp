@@ -1,5 +1,6 @@
 "use server";
 
+import { OpenAI } from "openai";
 import { ResponseService } from "@/services/responses.service";
 import { InterviewService } from "@/services/interviews.service";
 import { Question } from "@/types/interview";
@@ -30,53 +31,44 @@ export const generateInterviewAnalytics = async (payload: {
       .map((q: Question, index: number) => `${index + 1}. ${q.question}`)
       .join("\n");
 
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      maxRetries: 5,
+      dangerouslyAllowBrowser: true,
+    });
+
     const prompt = getInterviewAnalyticsPrompt(
       interviewTranscript,
       mainInterviewQuestions,
     );
 
-    const apiResponse = await fetch("https://api.perplexity.ai/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-sonar-small-128k-online",
-        messages: [
-          {
-            role: "system",
-            content: SYSTEM_PROMPT,
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        response_format: { type: "json_object" },
-      }),
+    const baseCompletion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      response_format: { type: "json_object" },
     });
 
-    if (!apiResponse.ok) {
-      throw new Error(`Perplexity API error: ${apiResponse.status}`);
-    }
-
-    const data = await apiResponse.json();
-    const content = data.choices[0]?.message?.content || "";
+    const basePromptOutput = baseCompletion.choices[0] || {};
+    const content = basePromptOutput.message?.content || "";
     const analyticsResponse = JSON.parse(content);
 
     analyticsResponse.mainInterviewQuestions = questions.map(
       (q: Question) => q.question,
     );
 
-    await ResponseService.saveResponse(
-      { analytics: analyticsResponse },
-      callId,
-    );
-
     return { analytics: analyticsResponse, status: 200 };
   } catch (error) {
-    console.error("Error generating analytics:", error);
-    return { analytics: null, status: 500 };
+    console.error("Error in OpenAI request:", error);
+
+    return { error: "internal server error", status: 500 };
   }
 };
